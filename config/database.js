@@ -1,3 +1,11 @@
+const fs = require("node:fs");
+const path = require("node:path");
+
+const envPath = path.join(__dirname, "..", ".env");
+if (typeof process.loadEnvFile === "function" && fs.existsSync(envPath)) {
+    process.loadEnvFile(envPath);
+}
+
 const mysql = require("mysql2/promise");
 
 function createDatabasePool() {
