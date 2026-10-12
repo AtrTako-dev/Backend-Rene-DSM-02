@@ -1,0 +1,143 @@
+@baseUrl = http://localhost:3000
+
+### Comprobar que el backend responde
+GET {{baseUrl}}/
+
+> {%
+client.test("El backend responde correctamente", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+});
+%}
+
+### Consultar las categorías y guardar una categoría existente para las siguientes solicitudes
+GET {{baseUrl}}/categorias
+
+> {%
+client.test("La lista de categorías se consultó correctamente", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(Array.isArray(response.body), "La respuesta debe ser una lista");
+    client.assert(response.body.length > 0, "La base necesita al menos una categoría para probar productos");
+});
+if (Array.isArray(response.body) && response.body.length > 0) {
+    client.global.set("categoryId", response.body[0].id_cat);
+}
+%}
+
+### Listar productos
+GET {{baseUrl}}/productos
+
+> {%
+client.test("La lista de productos se consultó correctamente", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(Array.isArray(response.body), "La respuesta debe ser una lista");
+});
+%}
+
+### Consultar productos de la primera categoría
+GET {{baseUrl}}/categorias/{{categoryId}}/productos
+
+> {%
+client.test("Los productos de la categoría se consultaron correctamente", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(Array.isArray(response.body), "La respuesta debe ser una lista");
+});
+%}
+
+### Crear producto de prueba; guarda el ID para leerlo, actualizarlo y eliminarlo
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "Nombre": "Producto de prueba HTTP",
+  "Precio": 19.99,
+  "id_cat1": {{categoryId}}
+}
+
+> {%
+client.test("El producto de prueba se creó", function () {
+    client.assert(response.status === 201, "Se esperaba HTTP 201; revisa que la categoría exista");
+    client.assert(response.body.id !== undefined, "La respuesta debe incluir el ID creado");
+});
+if (response.status === 201 && response.body.id !== undefined) {
+    client.global.set("productId", response.body.id);
+}
+%}
+
+### Consultar el producto recién creado
+GET {{baseUrl}}/productos/{{productId}}
+
+> {%
+client.test("El producto creado se encontró", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(response.body.Nombre === "Producto de prueba HTTP", "El nombre no coincide");
+});
+%}
+
+### Actualizar el mismo producto de prueba
+PUT {{baseUrl}}/productos/{{productId}}
+Content-Type: application/json
+
+{
+  "Nombre": "Producto de prueba HTTP actualizado",
+  "Precio": 24.50,
+  "id_cat1": {{categoryId}}
+}
+
+> {%
+client.test("El producto de prueba se actualizó", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+});
+%}
+
+### Confirmar los cambios del producto
+GET {{baseUrl}}/productos/{{productId}}
+
+> {%
+client.test("Los cambios del producto se guardaron", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(response.body.Nombre === "Producto de prueba HTTP actualizado", "El nombre actualizado no coincide");
+});
+%}
+
+### Eliminar únicamente el producto de prueba creado arriba
+DELETE {{baseUrl}}/productos/{{productId}}
+
+> {%
+client.test("El producto de prueba se eliminó", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+});
+%}
+
+### Confirmar que el producto de prueba ya no existe
+GET {{baseUrl}}/productos/{{productId}}
+
+> {%
+client.test("El producto eliminado ya no aparece", function () {
+    client.assert(response.status === 404, "Se esperaba HTTP 404 después de eliminarlo");
+});
+%}
+
+### Consultar usuarios
+GET {{baseUrl}}/usuarios
+
+> {%
+client.test("La lista de usuarios se consultó correctamente", function () {
+    client.assert(response.status === 200, "Se esperaba HTTP 200");
+    client.assert(Array.isArray(response.body), "La respuesta debe ser una lista");
+});
+%}
+
+### Alta opcional de usuario; queda guardado en la base y no tiene ruta DELETE
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+  "Nombre": "Usuario de prueba HTTP",
+  "Correo": "usuario.prueba.http@example.com"
+}
+
+> {%
+client.test("El usuario se creó o el correo ya estaba registrado", function () {
+    client.assert(response.status === 201 || response.status === 409, "Se esperaba HTTP 201 o 409");
+});
+%}
