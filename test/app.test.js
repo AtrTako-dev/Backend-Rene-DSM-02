@@ -15,8 +15,22 @@ function createFakeDatabase() {
                 return params[0] === "404" ? [[]] : [[{ id_P: 1, Nombre: "Teclado" }]];
             }
             if (sql.startsWith("SELECT * FROM producto WHERE id_cat1")) return [[{ id_P: 1, Nombre: "Teclado" }]];
-            if (sql.startsWith("INSERT INTO producto")) return [{ insertId: 12 }];
+            if (sql.startsWith("INSERT INTO producto")) {
+                if (Number(params[2]) === 999) {
+                    const error = new Error("Referenced category does not exist");
+                    error.code = "ER_NO_REFERENCED_ROW_2";
+                    error.errno = 1452;
+                    throw error;
+                }
+                return [{ insertId: 12 }];
+            }
             if (sql.startsWith("UPDATE producto")) {
+                if (Number(params[2]) === 999) {
+                    const error = new Error("Referenced category does not exist");
+                    error.code = "ER_NO_REFERENCED_ROW_2";
+                    error.errno = 1452;
+                    throw error;
+                }
                 const unchanged = params[0] === "Teclado";
                 return [{ affectedRows: params.at(-1) === "404" || unchanged ? 0 : 1 }];
             }
@@ -66,7 +80,11 @@ test("rutas HTTP, validaciones y respuestas del backend", async (t) => {
     assert.deepEqual(await createdProduct.json(), { mensaje: "Producto agregado", id: 12 });
     assert.equal((await request("/productos", json("POST", { Nombre: "", Precio: -1, id_cat1: 0 }))).status, 400);
     assert.equal((await request("/productos", { method: "POST" })).status, 400);
+    const missingCategoryPost = await request("/productos", json("POST", { Nombre: "Mouse", Precio: 120, id_cat1: 999 }));
+    assert.equal(missingCategoryPost.status, 400);
+    assert.deepEqual(await missingCategoryPost.json(), { mensaje: "La categoría indicada no existe" });
     assert.equal((await request("/productos/1", json("PUT", { Nombre: "Mouse", Precio: 130, id_cat1: 1 }))).status, 200);
+    assert.equal((await request("/productos/1", json("PUT", { Nombre: "Mouse", Precio: 130, id_cat1: 999 }))).status, 400);
     assert.equal((await request("/productos/1", json("PUT", { Nombre: "Teclado", Precio: 250, id_cat1: 1 }))).status, 200);
     assert.equal((await request("/productos", { method: "POST" })).status, 400);
     assert.equal((await request("/productos/404", json("PUT", { Nombre: "Mouse", Precio: 130, id_cat1: 1 }))).status, 404);

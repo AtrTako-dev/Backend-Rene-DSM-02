@@ -30,6 +30,9 @@ class ProductoController {
             const id = await this.productoModel.create(producto);
             res.status(201).json({ mensaje: "Producto agregado", id });
         } catch (error) {
+            if (error.code === "ER_NO_REFERENCED_ROW_2" || error.errno === 1452) {
+                return res.status(400).json({ mensaje: "La categoría indicada no existe" });
+            }
             this.handleError(res, error, "Error al agregar producto");
         }
     };
@@ -42,6 +45,9 @@ class ProductoController {
             if (!updated) return res.status(404).json({ mensaje: "Producto no encontrado" });
             res.json({ mensaje: "Producto actualizado" });
         } catch (error) {
+            if (error.code === "ER_NO_REFERENCED_ROW_2" || error.errno === 1452) {
+                return res.status(400).json({ mensaje: "La categoría indicada no existe" });
+            }
             this.handleError(res, error, "Error al actualizar producto");
         }
     };
